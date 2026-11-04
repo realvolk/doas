@@ -1,5 +1,5 @@
 pkgname=doas-linux
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc="Linux port of OpenBSD doas(1)"
 arch=('x86_64')
