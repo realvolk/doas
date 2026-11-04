@@ -10,7 +10,7 @@ makedepends=('byacc')
 provides=('doas')
 conflicts=('doas' 'opendoas')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/realvolk/doas/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('dea158f150673a76bde9aa907bad0ab749eb3419645fe8f67df6af7b4d545f84')
+sha256sums=('12a62136e4c147549ea3ebb1b93c113986259869fd4804d3f3b675c715b0503e')
 
 build() {
     cd "$srcdir/doas-$pkgver"
