@@ -1,0 +1,87 @@
+#!/bin/sh
+# Copyright (c) 2026 realvolk <https://github.com/realvolk>
+# ISC. See LICENSE.
+set -eu
+
+PREFIX=/usr/local
+SYSCONFDIR=/etc
+BINDIR=
+MANDIR=
+SAFE_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+for arg in "$@"; do
+	case $arg in
+	--prefix=*)     PREFIX=${arg#*=} ;;
+	--sysconfdir=*) SYSCONFDIR=${arg#*=} ;;
+	--bindir=*)     BINDIR=${arg#*=} ;;
+	--mandir=*)     MANDIR=${arg#*=} ;;
+	--with-safepath=*) SAFE_PATH=${arg#*=} ;;
+	--help|-h)
+		cat <<EOF
+usage: ./configure [options]
+  --prefix=DIR           installation prefix [/usr/local]
+  --sysconfdir=DIR       config directory [/etc]
+  --bindir=DIR           binaries [PREFIX/bin]
+  --mandir=DIR           man pages [PREFIX/share/man]
+  --with-safepath=PATH   safe PATH for the executed command
+EOF
+		exit 0
+		;;
+	*)
+		printf 'configure: error: unknown option %s\n' "$arg" >&2
+		exit 1
+		;;
+	esac
+done
+
+: "${BINDIR:=$PREFIX/bin}"
+: "${MANDIR:=$PREFIX/share/man}"
+
+die() { printf 'configure: error: %s\n' "$*" >&2; exit 1; }
+
+printf 'checking for libbsd... '
+cat >_check.c <<'EOF'
+#include <bsd/stdlib.h>
+#include <bsd/string.h>
+int main(void) { return 0; }
+EOF
+if ${CC:-cc} _check.c -o _check -lbsd 2>/dev/null; then
+	echo yes
+	LIBS_BSD="-lbsd"
+else
+	echo no
+	rm -f _check.c _check
+	die "libbsd is required"
+fi
+rm -f _check.c _check
+
+printf 'checking for PAM... '
+cat >_check.c <<'EOF'
+#include <security/pam_appl.h>
+int main(void) { return 0; }
+EOF
+if ${CC:-cc} _check.c -o _check -lpam 2>/dev/null; then
+	echo yes
+	LIBS_PAM="-lpam"
+else
+	echo no
+	rm -f _check.c _check
+	die "PAM is required"
+fi
+rm -f _check.c _check
+
+cat >config.mk <<EOF
+CFLAGS  += -I. -Icompat -D_DEFAULT_SOURCE -D_GNU_SOURCE
+CFLAGS  += -DDOAS_CONF=\\"${SYSCONFDIR}/doas.conf\\"
+CFLAGS  += -DSAFE_PATH=\\"${SAFE_PATH}\\"
+LDLIBS  += ${LIBS_BSD} ${LIBS_PAM}
+BINDIR      = ${BINDIR}
+MANDIR      = ${MANDIR}
+SYSCONFDIR  = ${SYSCONFDIR}
+EOF
+
+echo "wrote config.mk"
+echo "  PREFIX=$PREFIX"
+echo "  BINDIR=$BINDIR"
+echo "  MANDIR=$MANDIR"
+echo "  SYSCONFDIR=$SYSCONFDIR"

@@ -1,0 +1,9 @@
+doas
+*.o
+*.d
+parse.c
+config.mk
+*.tar.gz
+*.pkg.tar.zst
+pkg/
+src/

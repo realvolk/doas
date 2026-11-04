@@ -1,0 +1,208 @@
+.\" $OpenBSD: doas.1,v 1.26 2022/12/22 19:53:22 kn Exp $
+.\"
+.\"Copyright (c) 2015 Ted Unangst <tedu@openbsd.org>
+.\"
+.\"Permission to use, copy, modify, and distribute this software for any
+.\"purpose with or without fee is hereby granted, provided that the above
+.\"copyright notice and this permission notice appear in all copies.
+.\"
+.\"THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\"WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\"MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\"ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\"WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\"ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\"OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.Dd November 4, 2026
+.Dt DOAS 1
+.Os
+.Sh NAME
+.Nm doas
+.Nd execute commands as another user
+.Sh SYNOPSIS
+.Nm doas
+.Op Fl Lns
+.Op Fl C Ar config
+.Op Fl u Ar user
+.Op Fl U Ar path
+.Op Fl P Ar promise
+.Ar command
+.Op Ar arg ...
+.Sh DESCRIPTION
+The
+.Nm
+utility executes the given command as another user.
+The
+.Ar command
+argument is mandatory unless
+.Fl C ,
+.Fl L ,
+or
+.Fl s
+is specified.
+.Pp
+The user will be required to authenticate by entering their password,
+unless configured otherwise.
+Authentication uses PAM; the service name is
+.Dq doas .
+.Pp
+By default, a new environment is created.
+The variables
+.Ev HOME ,
+.Ev LOGNAME ,
+.Ev PATH ,
+.Ev SHELL ,
+and
+.Ev USER
+are set to values appropriate for the target user.
+.Ev PATH
+is set at compile time
+.Pq see Fl -with-safepath
+in
+.Pa configure .
+.Ev DOAS_USER
+is set to the name of the user executing
+.Nm .
+The variables
+.Ev DISPLAY
+and
+.Ev TERM
+are inherited from the current environment.
+This behavior may be modified by the config file.
+The working directory is not changed.
+.Pp
+On Linux, two optional sandboxes are available.
+A seccomp syscall filter is enabled by passing at least one
+.Fl P ;
+unlisted syscalls return
+.Er EPERM .
+A Landlock filesystem sandbox is enabled by passing at least one
+.Fl U ;
+when enabled, the sandbox is inherited across
+.Xr execve 2 ,
+so the command sees only the whitelisted paths.
+Both are off by default.
+.Pp
+The options are as follows:
+.Bl -tag -width tenletters
+.It Fl C Ar config
+Parse and check the configuration file
+.Ar config ,
+then exit.
+If
+.Ar command
+is supplied,
+.Nm
+will also perform command matching.
+In the latter case
+either
+.Sq permit ,
+.Sq permit nopass
+or
+.Sq deny
+will be printed on standard output, depending on command
+matching results.
+No command is executed.
+.It Fl L
+Clear any persisted authentications from previous invocations,
+then immediately exit.
+No command is executed.
+On Linux, this removes the timestamp file under
+.Pa /run/doas .
+.It Fl n
+Non interactive mode, fail if the matching rule doesn't have the
+.Ic nopass
+option.
+.It Fl P Ar promise
+Enable the seccomp syscall filter for this invocation and add
+.Ar promise
+to the base promise set
+.Pq Dq stdio rpath wpath getpw exec id .
+May be specified multiple times.
+Without any
+.Fl P ,
+the filter is not applied and the command has the full syscall
+interface, matching stock
+.Ox
+behavior.
+.It Fl s
+Execute the shell from
+.Ev SHELL
+or
+.Pa /etc/passwd .
+.It Fl U Ar path
+Enable the Landlock filesystem sandbox for this invocation and add
+.Ar path
+to the whitelist.
+The executed command may access
+.Ar path
+and everything beneath it.
+May be specified multiple times.
+Without any
+.Fl U ,
+the sandbox is not applied and the command sees the whole filesystem,
+matching stock
+.Ox
+behavior.
+When
+.Fl U
+is used at least once, the sandbox is enabled and the command also
+sees the core paths
+.Pq libc, passwd, group, nsswitch, localtime, ssl, /dev/null, /dev/urandom, /proc, /sys
+plus the binary itself.
+.It Fl u Ar user
+Execute the command as
+.Ar user .
+The default is root.
+.It Fl -
+End option parsing.
+Use this when the command has its own flags:
+.Dq Li "doas -- /usr/bin/pacman -Qi bash" .
+.El
+.Sh EXIT STATUS
+.Ex -std doas
+It may fail for one of the following reasons:
+.Pp
+.Bl -bullet -compact
+.It
+The config file
+.Pa /etc/doas.conf
+could not be parsed.
+.It
+The user attempted to run a command which is not permitted.
+.It
+The password was incorrect.
+.It
+The specified command was not found or is not executable.
+.El
+.Sh SEE ALSO
+.Xr su 1 ,
+.Xr doas.conf 5 ,
+.Xr pam.d 5
+.Sh HISTORY
+The
+.Nm
+command first appeared in
+.Ox 5.8 .
+.Pp
+The Linux port
+.Pq Nm doas-linux
+tracks
+.Ox
+revision 1.26 of this manual.
+It replaces BSD authentication with PAM and
+.Xr login.conf 5
+with a compile-time
+.Ev PATH .
+It adds
+.Fl U
+and
+.Fl P
+flags and the
+.Ic set getopt
+directive, which have no
+.Ox
+equivalent.
+.Sh AUTHORS
+.An Ted Unangst Aq Mt tedu@openbsd.org
+.An realvolk Aq Lk https://github.com/realvolk .
