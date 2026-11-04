@@ -66,5 +66,9 @@ char **prepenv(const struct rule *, const struct passwd *,
 #define AUTH_OK		0
 #define AUTH_RETRIES	3
 
+#ifndef SAFE_PATH
+#define SAFE_PATH "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+#endif
+
 void pamauth(const char *, const char *, int, int, int);
 

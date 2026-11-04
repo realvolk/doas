@@ -3,7 +3,7 @@
 # ISC. See LICENSE.
 set -eu
 
-PREFIX=/usr/local
+PREFIX=/usr
 SYSCONFDIR=/etc
 BINDIR=
 MANDIR=
@@ -70,6 +70,12 @@ else
 fi
 rm -f _check.c _check
 
+printf 'checking for byacc... '
+if ! command -v byacc >/dev/null 2>&1; then
+	printf 'no\n'
+	die "byacc is required"
+fi
+echo yes
 cat >config.mk <<EOF
 CFLAGS  += -I. -Icompat -D_DEFAULT_SOURCE -D_GNU_SOURCE
 CFLAGS  += -DDOAS_CONF=\\"${SYSCONFDIR}/doas.conf\\"

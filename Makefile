@@ -48,7 +48,7 @@ install: $(PROG) $(MAN)
 	install -d -m 0755 $(DESTDIR)$(BINDIR)
 	install -d -m 0755 $(DESTDIR)$(MANDIR)/man1
 	install -d -m 0755 $(DESTDIR)$(MANDIR)/man5
-	install -m 4555 -o root -g root $(PROG) $(DESTDIR)$(BINDIR)/$(PROG)
+	install -m 4755 $(PROG) $(DESTDIR)$(BINDIR)/$(PROG)
 	install -m 0644 doas.1 $(DESTDIR)$(MANDIR)/man1/doas.1
 	install -m 0644 doas.conf.5 $(DESTDIR)$(MANDIR)/man5/doas.conf.5
 

@@ -119,6 +119,19 @@ Enable the seccomp syscall filter for this invocation and add
 to the base promise set
 .Pq Dq stdio rpath wpath getpw exec id .
 May be specified multiple times.
+The base set does not include
+.Cm tty ;
+programs that use
+.Xr ioctl 2
+on the controlling terminal
+.Pq interactive editors, pagers, full-screen tools
+need
+.Fl P tty .
+Without it,
+.Xr ioctl 2
+returns
+.Er EPERM ,
+which also blocks TIOCSTI tty character injection.
 Without any
 .Fl P ,
 the filter is not applied and the command has the full syscall
@@ -150,10 +163,26 @@ is used at least once, the sandbox is enabled and the command also
 sees the core paths
 .Pq libc, passwd, group, nsswitch, localtime, ssl, /dev/null, /dev/urandom, /proc, /sys
 plus the binary itself.
+The process is marked
+.Dv no_new_privs
+before the ruleset is installed, so setuid binaries executed under
+.Fl U
+do not regain privileges.
+If Landlock is unavailable
+.Pq kernel older than 5.13 ,
+.Fl U
+fails closed: the first path is refused and
+.Nm
+exits.
 .It Fl u Ar user
 Execute the command as
 .Ar user .
 The default is root.
+The target account's PAM account state is not checked; only the
+authenticating user's is.
+This matches
+.Ox
+behavior.
 .It Fl -
 End option parsing.
 Use this when the command has its own flags:
@@ -189,7 +218,7 @@ The Linux port
 .Pq Nm doas-linux
 tracks
 .Ox
-revision 1.26 of this manual.
+doas.c 1.100 and doas.1 1.26.
 It replaces BSD authentication with PAM and
 .Xr login.conf 5
 with a compile-time

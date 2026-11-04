@@ -51,10 +51,6 @@
 #define DOAS_CONF "/etc/doas.conf"
 #endif
 
-#ifndef SAFE_PATH
-#define SAFE_PATH "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-#endif
-
 static const struct option longopts[] = {
 	{ "config",          required_argument, NULL, 'C' },
 	{ "clear",           no_argument,       NULL, 'L' },
@@ -489,8 +485,11 @@ main(int argc, char **argv)
 				warnx("unveil: no candidate for '%s' in PATH", cmd);
 		}
 		for (i = 0; i < (int)unveil_count; i++) {
-			if (unveil(unveil_paths[i], "a") == -1)
+			if (unveil(unveil_paths[i], "a") == -1) {
+				if (errno == ENOSYS)
+					break;
 				err(1, "unveil %s", unveil_paths[i]);
+			}
 		}
 	}
 
@@ -515,8 +514,6 @@ main(int argc, char **argv)
 		err(1, "initgroups");
 	if (setresuid(target, target, target) != 0)
 		err(1, "setresuid");
-	if (setenv("PATH", safepath, 1) == -1)
-		err(1, "failed to set PATH '%s'", safepath);
 
 	if (getcwd(cwdpath, sizeof(cwdpath)) == NULL)
 		cwd = "(failed)";

@@ -152,7 +152,7 @@ static void
 watchsession(pid_t child, int sess, int cred)
 {
 	sigset_t sigs;
-	struct sigaction act, oldact;
+	struct sigaction act, oldact = { 0 };
 	int status = 1;
 
 	sigfillset(&sigs);

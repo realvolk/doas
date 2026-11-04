@@ -20,6 +20,7 @@
 
 #include <sys/syscall.h>
 #include <sys/stat.h>
+#include <sys/prctl.h>
 #include <linux/landlock.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -170,6 +171,8 @@ unveil_commit(void)
 		return 0;
 	}
 
+	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1)
+		return -1;
 	ret = syscall(__NR_landlock_restrict_self, ruleset_fd, 0);
 	close(ruleset_fd);
 	ruleset_fd = -1;

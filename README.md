@@ -4,13 +4,22 @@ Linux port of OpenBSD doas(1). Tracks upstream doas.c 1.100.
 
 ## Build
 
-Needs libbsd and PAM.
+Needs libbsd, PAM, and byacc.
 
     ./configure
     make
-    make install
+    sudo make install
+
+configure defaults to `--prefix=/usr`; the binary goes to
+`/usr/bin` and the man pages to `/usr/share/man`. Pass
+`--prefix=/usr/local` for a local install.
 
 configure flags: --prefix --sysconfdir --bindir --mandir --with-safepath
+
+`make install` needs root to set the setuid bit (mode 4755). For
+staged installs:
+
+    make DESTDIR=/tmp/pkg install
 
 ## PAM
 
@@ -75,8 +84,9 @@ Without `-U`, `doas -- /usr/bin/pacman -Syu` works like
 `sudo pacman -Syu`. With the alias, pacman is restricted to its own
 paths.
 
-If Landlock is unavailable (kernel < 5.13), `-U` prints a warning to
-stderr once and the sandbox is skipped.
+Landlock requires kernel 5.13 or later. On older kernels, `-U` fails
+closed: the first path is refused and doas exits. If you need the
+invocation to run unsandboxed, drop `-U`.
 
 ## Syscall filter (seccomp)
 
@@ -108,7 +118,14 @@ under Tested. To find a missing syscall:
 
 sudo is needed: strace disables setuid on the tracee. `grep -E '= -1
 EPERM'` on the trace log shows which syscalls are blocked, and the
-last one before a failure is the one to add to compat/pledge.c.
+last one before a failure is the one to add to compat/pledge.c. This
+finds syscalls a program needs; it does not exercise the setuid
+privilege drop (the tracee runs as your user, not root). To confirm
+the sandbox is live on a real invocation:
+
+    doas -U /tmp -- /usr/bin/cat /etc/shadow
+
+must fail with `Permission denied`.
 
 ## Differences from OpenBSD
 
@@ -126,7 +143,9 @@ last one before a failure is the one to add to compat/pledge.c.
 - unveil: Landlock, exposed as -U flag. Off by default; opt in by
   passing at least one -U. Rules are inherited across execve, so
   the executed command is sandboxed. OpenBSD's doas leaves the
-  child unveiled either way.
+  child unveiled either way. PR_SET_NO_NEW_PRIVS is set before
+  landlock_restrict_self(2); setuid binaries exec'd under -U do
+  not regain privileges.
 - set getopt = permute: opt-in GNU-style argument parsing.
   Default is posix (matches sudo and OpenBSD doas). See
   doas.conf(5).
@@ -143,6 +162,8 @@ Artix Linux, dinit, x86_64.
 - pacman -Qi, -Syu, both with and without -U sandbox
 - sandbox default off: cat /etc/shadow works
 - sandbox -U: cat /etc/shadow blocked without -U, allowed with -U /etc/shadow
+- sandbox -U with non-root target (-u nobody): allowed paths work,
+  others EACCES
 - seccomp default off: nano works without -P
 - seccomp -P: nano blocked without -P tty, works with -P tty
 - ls, cat, printenv, nano, git, dinitctl
@@ -150,6 +171,9 @@ Artix Linux, dinit, x86_64.
 - getopt posix and permute modes
 - doas.conf line continuation
 - config permission check: 666, 664, non-root-owned refused
+- child PATH matches caller's PATH for commandless rules, safepath
+  for rules with cmd
+- env -i doas: no segfault, safepath fallback
 
 ## Not tested
 
@@ -158,7 +182,7 @@ Artix Linux, dinit, x86_64.
 - syslog. No syslogd running.
 - Persist across reboot.
 - Multi-user. Timestamp keyed on uid only.
-- Landlock on kernels < 5.13 (sandbox is skipped).
+- Landlock on kernels < 5.13 (fails closed).
 
 ## Prior art
 

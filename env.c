@@ -108,7 +108,7 @@ createenv(const struct rule *rule, const struct passwd *mypw,
 	addnode(env, "DOAS_USER", mypw->pw_name);
 	addnode(env, "HOME", targpw->pw_dir);
 	addnode(env, "LOGNAME", targpw->pw_name);
-	addnode(env, "PATH", getenv("PATH"));
+	addnode(env, "PATH", getenv("PATH") ? getenv("PATH") : SAFE_PATH);
 	addnode(env, "SHELL", targpw->pw_shell);
 	addnode(env, "USER", targpw->pw_name);
 

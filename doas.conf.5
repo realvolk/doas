@@ -54,6 +54,7 @@ again for some time.
 On Linux this is implemented with timestamp files in
 .Pa /run/doas ;
 on OpenBSD a tty ioctl is used.
+Timestamps are keyed on uid only, not on tty or parent.
 .It Ic keepenv
 Environment variables other than those listed in
 .Xr doas 1
@@ -204,7 +205,7 @@ The Linux port
 .Pq Nm doas-linux
 tracks
 .Ox
-revision 1.46 of this manual.
+doas.c 1.100 and doas.conf.5 1.46.
 It adds the
 .Ic set getopt
 directive, which has no
