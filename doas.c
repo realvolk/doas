@@ -18,7 +18,8 @@
  * Ported to Linux by realvolk. Changes from upstream doas.c 1.100:
  * PAM auth replaces BSD auth, setusercontext replaced by
  * setresgid/initgroups/setresuid, login.conf paths removed, pledge
- * calls routed through compat/pledge.c, unveil removed.
+ * calls routed through compat/pledge.c, unveil routed through
+ * compat/unveil.c
  */
 
 #include <sys/types.h>
