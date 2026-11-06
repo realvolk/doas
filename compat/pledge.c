@@ -155,12 +155,18 @@ static const struct {
 	{ NULL,    NULL           },
 };
 
-static void
-append(struct sock_filter *f, int *n, const int *nr)
+#define PTRS_MAX_FILTER 1024
+
+static int
+append(struct sock_filter *f, int *n, const int *nr, int max)
 {
 	int i;
 
 	for (i = 0; nr[i] != -1; i++) {
+		if (*n + 2 > max) {
+			errno = E2BIG;
+			return -1;
+		}
 		f[*n] = (struct sock_filter){
 		    .code = BPF_JMP | BPF_JEQ | BPF_K,
 		    .jt = 0, .jf = 1, .k = nr[i] };
@@ -170,6 +176,7 @@ append(struct sock_filter *f, int *n, const int *nr)
 		    .k = SECCOMP_RET_ALLOW };
 		(*n)++;
 	}
+	return 0;
 }
 
 int
@@ -229,7 +236,8 @@ pledge(const char *promises_str, const char *execpromises)
 	    .code = BPF_LD | BPF_W | BPF_ABS,
 	    .k = offsetof(struct seccomp_data, nr) };
 
-	append(f, &n, common_syscalls);
+	if (append(f, &n, common_syscalls, PTRS_MAX_FILTER) < 0)
+		return -1;
 
 	copy = strdup(promises_str);
 	if (copy == NULL)
@@ -239,7 +247,11 @@ pledge(const char *promises_str, const char *execpromises)
 		found = 0;
 		for (i = 0; promises[i].name; i++) {
 			if (strcmp(promises[i].name, tok) == 0) {
-				append(f, &n, promises[i].nr);
+				if (append(f, &n, promises[i].nr,
+				    PTRS_MAX_FILTER) < 0) {
+					free(copy);
+					return -1;
+				}
 				found = 1;
 				break;
 			}
