@@ -152,7 +152,7 @@ static void
 watchsession(pid_t child, int sess, int cred)
 {
 	sigset_t sigs;
-	struct sigaction act, oldact = { 0 };
+	struct sigaction act, oldact = { 0 }, oldint = { 0 };
 	int status = 1;
 
 	sigfillset(&sigs);
@@ -169,10 +169,8 @@ watchsession(pid_t child, int sess, int cred)
 	sigemptyset(&sigs);
 	if (sigaddset(&sigs, SIGTERM) ||
 	    sigaddset(&sigs, SIGINT) ||
-	    sigaddset(&sigs, SIGALRM) ||
-	    sigaddset(&sigs, SIGTSTP) ||
 	    sigaction(SIGTERM, &act, &oldact) ||
-	    sigaction(SIGINT, &act, NULL) ||
+	    sigaction(SIGINT, &act, &oldint) ||
 	    sigprocmask(SIG_UNBLOCK, &sigs, NULL)) {
 		warn("failed to set signal handler");
 		caught_signal = 1;
@@ -205,8 +203,7 @@ close:
 			fprintf(stderr, " ...killed.\n");
 		}
 		sigaction(SIGTERM, &oldact, NULL);
-		if (caught_signal != SIGTERM)
-			caught_signal = SIGKILL;
+		sigaction(SIGINT, &oldint, NULL);
 		kill(getpid(), caught_signal);
 	}
 	exit(status);

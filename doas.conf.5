@@ -55,10 +55,26 @@ On Linux this is implemented with timestamp files in
 .Pa /run/doas ;
 on OpenBSD a tty ioctl is used.
 Timestamps are keyed on uid only, not on tty or parent.
+A timestamp is rejected if the observed system uptime is lower than
+when it was written, which catches the common reboot case but is not
+a general guarantee across reboots.
 .It Ic keepenv
 Environment variables other than those listed in
 .Xr doas 1
 are retained when creating the environment for the new process.
+On Linux this includes loader variables such as
+.Ev LD_PRELOAD ,
+.Ev LD_LIBRARY_PATH ,
+and
+.Ev LD_AUDIT .
+Because the command is not executed as a setuid binary, ld.so will
+honor them and load a caller-supplied shared object into the target
+process.
+Use
+.Ic keepenv
+only with rules whose target is the same user as the caller, or strip
+those variables with
+.Ic setenv .
 .It Ic setenv Brq Oo Ar variable ... Oc Oo Ar variable Ns = Ns Ar value ... Oc
 Keep or set the space-separated specified variables.
 Variables may also be removed with a leading
@@ -96,6 +112,10 @@ alone means that command must be run without any arguments.
 .El
 .Pp
 The last matching rule determines the action taken.
+Unlike
+.Ox ,
+which uses the first matching rule, rules are evaluated in order and
+the last match wins.
 If no rule matches, the action is denied.
 .Pp
 Comments can be put anywhere in the file using a hash mark
@@ -211,6 +231,11 @@ It adds the
 directive, which has no
 .Ox
 equivalent.
+Rule ordering differs from
+.Ox :
+this port uses the last matching rule, while
+.Ox
+uses the first.
 .Sh AUTHORS
 .An Ted Unangst Aq Mt tedu@openbsd.org
 .Pp

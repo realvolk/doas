@@ -102,6 +102,7 @@ timestamp_check(uid_t uid)
 	    clock_gettime(CLOCK_BOOTTIME, &now[0]) == 0 &&
 	    clock_gettime(CLOCK_REALTIME, &now[1]) == 0 &&
 	    st.st_atim.tv_sec > now[0].tv_sec &&
+	    st.st_atim.tv_sec - TIMEOUT <= now[0].tv_sec &&
 	    st.st_atim.tv_sec < now[0].tv_sec + 2 * TIMEOUT &&
 	    st.st_mtim.tv_sec > now[1].tv_sec &&
 	    st.st_mtim.tv_sec < now[1].tv_sec + 2 * TIMEOUT)

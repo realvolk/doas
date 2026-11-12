@@ -35,6 +35,8 @@
 static const int common_syscalls[] = {
 	__NR_exit, __NR_exit_group, __NR_rt_sigreturn,
 	__NR_brk, __NR_mmap, __NR_munmap, __NR_mprotect, __NR_madvise,
+	__NR_mremap, __NR_mlock, __NR_mlock2, __NR_munlock, __NR_munlockall,
+	__NR_sched_getscheduler, __NR_sched_getparam,
 	__NR_getpid, __NR_gettid, __NR_getppid,
 	__NR_clock_gettime, __NR_gettimeofday, __NR_nanosleep,
 	__NR_clock_nanosleep, __NR_clock_getres,
@@ -90,6 +92,8 @@ static const int rpath_syscalls[] = {
 	__NR_getcwd,
 	__NR_chdir, __NR_fchdir,
 	__NR_statfs, __NR_fstatfs,
+	__NR_getxattr, __NR_lgetxattr, __NR_fgetxattr,
+	__NR_listxattr, __NR_llistxattr, __NR_flistxattr,
 	-1
 };
 
@@ -182,7 +186,7 @@ append(struct sock_filter *f, int *n, const int *nr, int max)
 int
 pledge(const char *promises_str, const char *execpromises)
 {
-	struct sock_filter f[1024];
+	struct sock_filter f[PTRS_MAX_FILTER + 2];
 	struct sock_fprog prog = { .len = 0, .filter = f };
 	char *copy, *tok, *save;
 	int n = 0, i, found;
@@ -242,8 +246,8 @@ pledge(const char *promises_str, const char *execpromises)
 	copy = strdup(promises_str);
 	if (copy == NULL)
 		return -1;
-	for (tok = strtok_r(copy, " ", &save); tok;
-	    tok = strtok_r(NULL, " ", &save)) {
+	for (tok = strtok_r(copy, " \t,", &save); tok;
+	    tok = strtok_r(NULL, " \t,", &save)) {
 		found = 0;
 		for (i = 0; promises[i].name; i++) {
 			if (strcmp(promises[i].name, tok) == 0) {

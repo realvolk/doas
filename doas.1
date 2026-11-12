@@ -132,12 +132,31 @@ Without it,
 returns
 .Er EPERM ,
 which also blocks TIOCSTI tty character injection.
+Networking syscalls
+.Pq socket, connect, sendto, recvfrom, etc.
+are currently part of the
+.Cm stdio
+promise, not a separate
+.Cm inet
+promise; any
+.Fl P
+invocation can open sockets.
 Without any
 .Fl P ,
 the filter is not applied and the command has the full syscall
 interface, matching stock
 .Ox
 behavior.
+Enabling the filter also sets
+.Dv no_new_privs
+on the process, so setuid binaries executed under
+.Fl P
+do not regain privileges.
+This is required by
+.Xr seccomp 2
+and cannot be disabled while
+.Fl P
+is in effect.
 .It Fl s
 Execute the shell from
 .Ev SHELL
@@ -173,7 +192,7 @@ If Landlock is unavailable
 .Fl U
 fails closed: the first path is refused and
 .Nm
-exits.
+exits with an error before executing the command.
 .It Fl u Ar user
 Execute the command as
 .Ar user .
@@ -232,6 +251,11 @@ flags and the
 directive, which have no
 .Ox
 equivalent.
+Unlike
+.Ox ,
+rule matching in
+.Xr doas.conf 5
+uses the last matching rule rather than the first.
 .Sh AUTHORS
 .An Ted Unangst Aq Mt tedu@openbsd.org
 .An realvolk Aq Lk https://github.com/realvolk .

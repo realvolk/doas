@@ -195,6 +195,8 @@ parseconfig(const char *filename, int checkperms)
 	if (checkperms) {
 		if (fstat(fileno(yyfp), &sb) != 0)
 			err(1, "fstat(\"%s\")", filename);
+		if (!S_ISREG(sb.st_mode))
+			errx(1, "%s is not a regular file", filename);
 		if ((sb.st_mode & (S_IWGRP|S_IWOTH)) != 0)
 			errx(1, "%s is writable by group or other", filename);
 		if (sb.st_uid != 0)
@@ -258,7 +260,7 @@ prescan_config(int argc, char **argv)
 					return argv[++i];
 				return NULL;
 			}
-			if (a[j] == 'u') {
+			if (a[j] == 'u' || a[j] == 'U' || a[j] == 'P') {
 				if (!a[j + 1])
 					i++;
 				break;
@@ -304,6 +306,11 @@ main(int argc, char **argv)
 	setprogname("doas");
 
 	closefrom(STDERR_FILENO + 1);
+
+	unsetenv("POSIXLY_CORRECT");
+
+	if (geteuid())
+		errx(1, "not installed setuid");
 
 	uid = getuid();
 
@@ -370,6 +377,8 @@ main(int argc, char **argv)
 	if (confpath) {
 		if (sflag)
 			usage();
+		if (unveil_count > 0 || pledge_count > 0)
+			errx(1, "-C cannot be combined with -U or -P");
 	} else if ((!sflag && !argc) || (sflag && argc))
 		usage();
 
@@ -400,12 +409,6 @@ main(int argc, char **argv)
 		    target);
 		exit(1);	/* fail safe */
 	}
-
-	if (nrules == 0)
-		parseconfig(DOAS_CONF, 1);
-
-	if (geteuid())
-		errx(1, "not installed setuid");
 
 	/* parseconfig(DOAS_CONF, 1) was already called above */
 
@@ -463,7 +466,8 @@ main(int argc, char **argv)
 	}
 
 	if (unveil_count > 0) {
-		unveil_core_paths();
+		if (unveil_core_paths() == 0)
+			errx(1, "unveil: no core paths could be added");
 		if (cmd[0] == '/') {
 			if (unveil(cmd, "rx") == -1)
 				warn("unveil %s", cmd);
@@ -486,11 +490,8 @@ main(int argc, char **argv)
 				warnx("unveil: no candidate for '%s' in PATH", cmd);
 		}
 		for (i = 0; i < (int)unveil_count; i++) {
-			if (unveil(unveil_paths[i], "a") == -1) {
-				if (errno == ENOSYS)
-					break;
+			if (unveil(unveil_paths[i], "a") == -1)
 				err(1, "unveil %s", unveil_paths[i]);
-			}
 		}
 	}
 
@@ -539,7 +540,6 @@ main(int argc, char **argv)
 	if (unveil_count > 0 && unveil_commit() == -1)
 		err(1, "unveil_commit");
 	execvpe(cmd, argv, envp);
-fail:
 	if (errno == ENOENT)
 		errx(1, "%s: command not found", cmd);
 	err(1, "%s", cmd);

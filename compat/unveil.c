@@ -34,7 +34,6 @@
 static int ruleset_fd = -1;
 static int landlock_abi = -1;
 static int rules_committed = 0;
-static int landlock_warned = 0;
 
 static int
 landlock_init(void)
@@ -164,11 +163,8 @@ unveil_commit(void)
 	if (rules_committed)
 		return 0;
 	if (ruleset_fd < 0) {
-		if (!landlock_warned) {
-			warnx("landlock unavailable, running without sandbox");
-			landlock_warned = 1;
-		}
-		return 0;
+		errno = ENOSYS;
+		return -1;
 	}
 
 	if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1)
@@ -183,32 +179,36 @@ unveil_commit(void)
 int
 unveil_core_paths(void)
 {
+	int added = 0;
+
 	/* Best-effort. Errors are ignored; missing paths are skipped. */
-	unveil("/etc/ld.so.cache", "r");
-	unveil("/etc/ld.so.conf", "r");
-	unveil("/etc/ld.so.conf.d", "r");
-	unveil("/etc/ld.so.preload", "r");
-	unveil("/lib", "rx");
-	unveil("/lib64", "rx");
-	unveil("/usr/lib", "rx");
-	unveil("/usr/lib64", "rx");
-	unveil("/etc/passwd", "r");
-	unveil("/etc/group", "r");
-	unveil("/etc/nsswitch.conf", "r");
-	unveil("/etc/localtime", "r");
-	unveil("/etc/resolv.conf", "r");
-	unveil("/etc/hosts", "r");
-	unveil("/etc/ssl", "r");
-	unveil("/etc/ca-certificates", "r");
-	unveil("/etc/pki", "r");
-	unveil("/usr/share/locale", "r");
-	unveil("/usr/share/zoneinfo", "r");
-	unveil("/dev/null", "rw");
-	unveil("/dev/zero", "r");
-	unveil("/dev/urandom", "r");
-	unveil("/dev/random", "r");
-	unveil("/dev/tty", "rw");
-	unveil("/proc", "r");
-	unveil("/sys", "r");
-	return 0;
+#define U(p, f) do { if (unveil((p), (f)) == 0) added++; } while (0)
+	U("/etc/ld.so.cache", "r");
+	U("/etc/ld.so.conf", "r");
+	U("/etc/ld.so.conf.d", "r");
+	U("/etc/ld.so.preload", "r");
+	U("/lib", "rx");
+	U("/lib64", "rx");
+	U("/usr/lib", "rx");
+	U("/usr/lib64", "rx");
+	U("/etc/passwd", "r");
+	U("/etc/group", "r");
+	U("/etc/nsswitch.conf", "r");
+	U("/etc/localtime", "r");
+	U("/etc/resolv.conf", "r");
+	U("/etc/hosts", "r");
+	U("/etc/ssl", "r");
+	U("/etc/ca-certificates", "r");
+	U("/etc/pki", "r");
+	U("/usr/share/locale", "r");
+	U("/usr/share/zoneinfo", "r");
+	U("/dev/null", "rw");
+	U("/dev/zero", "r");
+	U("/dev/urandom", "r");
+	U("/dev/random", "r");
+	U("/dev/tty", "rw");
+	U("/proc", "r");
+	U("/sys", "r");
+#undef U
+	return added;
 }
