@@ -361,7 +361,7 @@ main(int argc, char **argv)
 			pledge_promises[pledge_count++] = optarg;
 			break;
 		case 'v':
-			printf("doas-linux 0.1.0 (OpenBSD doas.c 1.100)\n");
+			printf("doas-linux 0.1.3 (OpenBSD doas.c 1.100)\n");
 			exit(0);
 		case 'h':
 			usage();
